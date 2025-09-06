@@ -49,7 +49,7 @@ async def application(request: Request):
 
 def get_station_data(user, pwd, sid):
     
-    # Encode submitted password for submission to Hoymiles
+    # Encode password for submission to Hoymiles
     hash_md5 = hashlib.new('md5')
     hash_md5.update(pwd.encode('utf-8'))
     hash_object = hashlib.new('sha256')
@@ -57,22 +57,13 @@ def get_station_data(user, pwd, sid):
     base64_bytes = base64.b64encode(hash_object.digest())
     base64_string = base64_bytes.decode('utf-8')
     pwd_string = hash_md5.hexdigest() + '.' + base64_string
-
+    
     #Get Login Token
-    url = "https://neapi.hoymiles.com/iam/pub/0/auth/login"
-    headers = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-    }
-    data = {
-        "user_name": user,
-        "password": pwd_string
-    }
-    response = requests.post(url, headers=headers, json=data)
-    feedback = response.json()
-    if feedback["status"] != "0":
-        raise UnicornException(message="S-Miles Cloud Login failed. Please check username and password.", code=401)
-    token = feedback["data"]["token"]
+    if user == "demo" and pwd == "demo":
+        token = get_demo_token()
+        sid = "50117"
+    else:
+        token = get_login_token(user, pwd_string)
 
     # Helper function to return valid device IDs if none was provided.
     if not sid:
@@ -144,4 +135,33 @@ def get_station_data(user, pwd, sid):
     pv_data["chart"] = pairings
     return(pv_data)
 
+def get_login_token(user, hashed_pwd):
+    url = "https://neapi.hoymiles.com/iam/pub/0/auth/login"
+    headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    }
+    data = {
+        "user_name": user,
+        "password": hashed_pwd
+    }
+    response = requests.post(url, headers=headers, json=data)
+    feedback = response.json()
+    if feedback["status"] != "0":
+        raise UnicornException(message="S-Miles Cloud Login failed. Please check username and password.", code=401)
+    token = feedback["data"]["token"]
+    return token
+
+def get_demo_token():
+    url = "https://neapi.hoymiles.com/iam/pub/0/auth/guest/owner"
+    headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    }
+    response = requests.post(url, headers=headers)
+    feedback = response.json()
+    if feedback["status"] != "0":
+        raise UnicornException(message="S-Miles Cloud Demo Login failed.", code=401)
+    token = feedback["data"]["token"]
+    return token    
 
